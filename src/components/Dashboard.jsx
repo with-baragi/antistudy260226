@@ -58,22 +58,26 @@ const Dashboard = ({ result, params }) => {
             await new Promise(resolve => setTimeout(resolve, 150));
             const element = document.getElementById('dashboard-content');
 
+            const scrollWidth = element.scrollWidth;
+            const scrollHeight = element.scrollHeight;
+
             const dataUrl = await toPng(element, {
                 quality: 0.95,
                 backgroundColor: '#f8fafc',
-                pixelRatio: 2
+                pixelRatio: 2,
+                width: scrollWidth,
+                height: scrollHeight,
+                style: { margin: '0' }
             });
 
+            // 짤림 방지를 위해 A4 규격 대신 대시보드 실제 비율과 일치하는 커스텀 PDF 캔버스 생성
             const pdf = new jsPDF({
-                orientation: 'landscape',
-                unit: 'mm',
-                format: 'a4'
+                orientation: scrollWidth > scrollHeight ? 'landscape' : 'portrait',
+                unit: 'px',
+                format: [scrollWidth, scrollHeight]
             });
 
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = (element.offsetHeight * pdfWidth) / element.offsetWidth;
-
-            pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            pdf.addImage(dataUrl, 'PNG', 0, 0, scrollWidth, scrollHeight);
             pdf.save('retirement_report.pdf');
         } catch (error) {
             console.error('PDF export failed:', error);
@@ -105,8 +109,8 @@ const Dashboard = ({ result, params }) => {
                         onClick={handleDownloadPdf}
                         disabled={isExporting}
                         className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors border ${isExporting
-                                ? 'bg-slate-200 text-slate-500 border-slate-300 cursor-not-allowed'
-                                : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+                            ? 'bg-slate-200 text-slate-500 border-slate-300 cursor-not-allowed'
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
                             }`}
                     >
                         {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
