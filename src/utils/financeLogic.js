@@ -19,14 +19,19 @@ export const calculateRetirementPlan = (params) => {
     const futureMonthlyLivingExpense = monthlyLivingExpense * Math.pow(1 + inflationRateDecimal, yearsToRetirement);
 
     // 2. Calculate the "Ideal Target Assets" needed exactly at retirement
-    // Approximate: sum of all future expenses during retirement, discounted to the retirement start, or just sum of inflated expenses
-    // Simple approach: Monthly * 12 * Years in retirement (with inflation)
-    let totalTargetAssets = 0;
-    for (let currentYear = retirementAge; currentYear <= lifeExpectancy; currentYear++) {
+    // 역산(Backward PV) 방식: 은퇴 후 매년 발생하는 예상 생활비를 기대 수명까지 
+    // 충당하기 위해 은퇴 시작 시점에 '정확히' 얼마가 있어야 하는지 계산.
+    // 은퇴 기간 중에도 남아있는 자산은 '예상 투자 수익률'만큼 복리로 계속 증식한다고 가정.
+    let requiredBalance = 0;
+    for (let currentYear = lifeExpectancy; currentYear >= retirementAge; currentYear--) {
         const yearsInRetirement = currentYear - retirementAge;
         const inflatedMonthlyExpense = futureMonthlyLivingExpense * Math.pow(1 + inflationRateDecimal, yearsInRetirement);
-        totalTargetAssets += inflatedMonthlyExpense * 12;
+        const yearlyExpense = inflatedMonthlyExpense * 12;
+
+        // 역산 로직: (기말 잔액 + 당해 지출) / (1 + 수익률) = 기초 잔액
+        requiredBalance = (requiredBalance + yearlyExpense) / (1 + returnRateDecimal);
     }
+    const totalTargetAssets = requiredBalance;
 
     let yearlyData = [];
     let currentBalance = currentAssets;
