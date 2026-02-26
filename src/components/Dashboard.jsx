@@ -1,7 +1,8 @@
 import {
-    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine
+    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
+    BarChart, Bar, Cell, Legend
 } from 'recharts';
-import { AlertCircle, CheckCircle, AlertTriangle } from 'lucide-react';
+import { AlertCircle, CheckCircle, AlertTriangle, Target, TrendingDown, TrendingUp } from 'lucide-react';
 
 const formatCurrency = (value) => {
     if (value >= 100000000) {
@@ -20,7 +21,7 @@ const formatFullCurrency = (value) => {
 const Dashboard = ({ result, params }) => {
     if (!result) return null;
 
-    const { yearlyData, goldenTime, totalRequiredAssets, futureMonthlyLivingExpense, status } = result;
+    const { yearlyData, goldenTime, totalRequiredAssets, totalTargetAssets, assetGap, futureMonthlyLivingExpense, status } = result;
 
     const StatusIcon = () => {
         if (status === '안전') return <CheckCircle className="w-8 h-8 text-green-500" />;
@@ -34,109 +35,169 @@ const Dashboard = ({ result, params }) => {
         '위험': 'border-red-200 bg-red-50 text-red-800'
     };
 
+    const isSurplus = assetGap >= 0;
+
+    // Data for the comparison bar chart
+    const comparisonData = [
+        { name: '필요 목표 자산', value: totalTargetAssets, fill: '#64748B' },
+        { name: '준비 예정 자산', value: totalRequiredAssets, fill: '#1E3A8A' }
+    ];
+
     return (
         <div className="space-y-8 max-w-6xl mx-auto">
-            {/* Header & Status */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <div>
-                    <h1 className="text-2xl font-bold text-deep-blue mb-1">시뮬레이션 결과 리포트</h1>
-                    <p className="text-sm text-slate-500">입력하신 데이터를 바탕으로 산출된 예상 자산 흐름입니다.</p>
+            {/* Header with Image & Status */}
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative">
+                <div className="flex items-center gap-6 z-10">
+                    <img
+                        src="/hero-image.png"
+                        alt="Retirement Planning"
+                        className="w-24 h-24 sm:w-32 sm:h-32 object-cover rounded-xl shadow-md border border-slate-100"
+                        onError={(e) => e.target.style.display = 'none'}
+                    />
+                    <div>
+                        <h1 className="text-2xl sm:text-3xl font-bold text-deep-blue mb-2 tracking-tight">시뮬레이션 결과 리포트</h1>
+                        <p className="text-sm sm:text-base text-slate-500 max-w-md">고객님의 현재 자산과 월 투자 금액을 바탕으로 은퇴 시점의 목표 달성 여부를 분석했습니다.</p>
+                    </div>
                 </div>
-                <div className={`flex items-center gap-3 px-6 py-3 rounded-full border ${statusColors[status]}`}>
+
+                <div className={`flex items-center gap-3 px-6 py-4 rounded-full border shadow-sm z-10 ${statusColors[status]}`}>
                     <StatusIcon />
                     <div>
-                        <div className="font-bold text-lg">플랜 상태: {status}</div>
+                        <div className="text-sm opacity-80 font-medium">현재 플랜 진단</div>
+                        <div className="font-bold text-xl">{status} 상태</div>
                     </div>
                 </div>
             </div>
 
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-center">
-                    <p className="text-sm text-slate-500 font-medium mb-1">은퇴 시점 필요 자산 총액</p>
-                    <p className="text-3xl font-bold text-deep-blue">{formatFullCurrency(totalRequiredAssets)}</p>
-                    <p className="text-xs text-slate-400 mt-2">{params.retirementAge}세 진입 시 예상 자산</p>
-                </div>
-
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-center">
-                    <p className="text-sm text-slate-500 font-medium mb-1">은퇴 후 필요 생활비 (미래 가치)</p>
-                    <p className="text-3xl font-bold text-slate-800">{formatFullCurrency(futureMonthlyLivingExpense)}</p>
-                    <p className="text-xs text-slate-400 mt-2">월 기준 / 첫 해 반영 금액</p>
-                </div>
-
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-center relative overflow-hidden">
-                    <p className="text-sm text-slate-500 font-medium mb-1">자산 고갈 예상 나이</p>
-                    <p className="text-4xl font-black text-rose-600">
-                        {goldenTime ? `${goldenTime}세` : '고갈 없음'}
+                    <div className="flex items-center gap-2 mb-2">
+                        <Target className="w-5 h-5 text-slate-400" />
+                        <p className="text-sm text-slate-500 font-medium">은퇴 시점 필요 목표 자산</p>
+                    </div>
+                    <p className="text-3xl font-bold text-slate-700">{formatFullCurrency(totalTargetAssets)}</p>
+                    <p className="text-xs text-slate-400 mt-2">은퇴 후 필요 생활비 총액 추산</p>
+                </div>
+
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-center border-l-4 border-l-deep-blue">
+                    <div className="flex items-center gap-2 mb-2">
+                        <Wallet className="w-5 h-5 text-deep-blue" />
+                        <p className="text-sm text-deep-blue font-bold">은퇴 시점 준비 예정 자산</p>
+                    </div>
+                    <p className="text-3xl font-black text-deep-blue">{formatFullCurrency(totalRequiredAssets)}</p>
+                    <p className="text-xs text-slate-500 mt-2">{params.retirementAge}세 진입 시 예상 누적 자산</p>
+                </div>
+
+                <div className={`p-6 rounded-2xl shadow-sm border flex flex-col justify-center relative overflow-hidden ${isSurplus ? 'bg-sky-50 border-sky-200' : 'bg-rose-50 border-rose-200'}`}>
+                    <div className="flex items-center gap-2 mb-2">
+                        {isSurplus ? <TrendingUp className="w-5 h-5 text-sky-600" /> : <TrendingDown className="w-5 h-5 text-rose-600" />}
+                        <p className={`text-sm font-bold ${isSurplus ? 'text-sky-700' : 'text-rose-700'}`}>
+                            {isSurplus ? '예상 초과 달성액' : '예상 부족 금액'}
+                        </p>
+                    </div>
+                    <p className={`text-3xl font-black ${isSurplus ? 'text-sky-600' : 'text-rose-600'}`}>
+                        {isSurplus ? '+' : ''}{formatFullCurrency(assetGap)}
                     </p>
-                    <p className="text-xs text-slate-400 mt-2">저축금 및 수익률 반영 기준</p>
-                    {goldenTime && (
-                        <div className="absolute -right-4 -bottom-4 opacity-10">
-                            <AlertCircle className="w-32 h-32 text-rose-600" />
-                        </div>
-                    )}
+                    <p className={`text-xs mt-2 ${isSurplus ? 'text-sky-600/70' : 'text-rose-600/70'}`}>
+                        {isSurplus ? '여유로운 은퇴 생활이 기대됩니다.' : '추가적인 투자 또는 지출 조정이 필요합니다.'}
+                    </p>
                 </div>
             </div>
 
-            {/* Main Chart */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <h3 className="text-lg font-bold text-deep-blue mb-6">연도별 자산 흐름 추이</h3>
-                <div className="h-96 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={yearlyData} margin={{ top: 20, right: 30, left: 20, bottom: 0 }}>
-                            <defs>
-                                <linearGradient id="colorAssets" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#1E3A8A" stopOpacity={0.3} />
-                                    <stop offset="95%" stopColor="#1E3A8A" stopOpacity={0} />
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                            <XAxis
-                                dataKey="age"
-                                tick={{ fill: '#64748B', fontSize: 12 }}
-                                tickLine={false}
-                                axisLine={{ stroke: '#CBD5E1' }}
-                                tickFormatter={(val) => `${val}세`}
-                            />
-                            <YAxis
-                                tickFormatter={formatCurrency}
-                                tick={{ fill: '#64748B', fontSize: 12 }}
-                                tickLine={false}
-                                axisLine={false}
-                                width={80}
-                            />
-                            <Tooltip
-                                formatter={(value) => [formatFullCurrency(value), '보유 자산']}
-                                labelFormatter={(label) => `${label}세 기준`}
-                                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
-                            />
-
-                            <ReferenceLine
-                                x={params.retirementAge}
-                                stroke="#64748B"
-                                strokeDasharray="5 5"
-                                label={{ position: 'top', value: '은퇴 시점', fill: '#64748B', fontSize: 12 }}
-                            />
-
-                            {goldenTime && (
-                                <ReferenceLine
-                                    x={goldenTime}
-                                    stroke="#E11D48"
-                                    strokeDasharray="5 5"
-                                    label={{ position: 'top', value: '자산 고갈', fill: '#E11D48', fontSize: 12, fontWeight: 'bold' }}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Target vs Actual Bar Chart */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 lg:col-span-1 flex flex-col">
+                    <h3 className="text-lg font-bold text-deep-blue mb-1">목표 달성 분석</h3>
+                    <p className="text-xs text-slate-500 mb-6">은퇴 시점({params.retirementAge}세) 기준</p>
+                    <div className="flex-1 min-h-[250px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={comparisonData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }} barSize={60}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                                <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 13, fontWeight: 500 }} axisLine={false} tickLine={false} />
+                                <YAxis tickFormatter={formatCurrency} tick={{ fill: '#94A3B8', fontSize: 11 }} axisLine={false} tickLine={false} />
+                                <Tooltip
+                                    formatter={(value) => [formatFullCurrency(value), '금액']}
+                                    cursor={{ fill: 'transparent' }}
+                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                 />
-                            )}
+                                <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                                    {comparisonData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                                    ))}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
 
-                            <Area
-                                type="monotone"
-                                dataKey="assets"
-                                stroke="#1E3A8A"
-                                strokeWidth={3}
-                                fillOpacity={1}
-                                fill="url(#colorAssets)"
-                            />
-                        </AreaChart>
-                    </ResponsiveContainer>
+                {/* Main Area Chart */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 lg:col-span-2">
+                    <div className="flex justify-between items-end mb-6">
+                        <div>
+                            <h3 className="text-lg font-bold text-deep-blue mb-1">연도별 생애 자산 흐름 추이</h3>
+                            <p className="text-xs text-slate-500">
+                                {goldenTime ? `자산 고갈 예상 시점: ${goldenTime}세` : '기대 수명까지 자산이 고갈되지 않습니다.'}
+                            </p>
+                        </div>
+                    </div>
+                    <div className="h-64 sm:h-80 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={yearlyData} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
+                                <defs>
+                                    <linearGradient id="colorAssets" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#1E3A8A" stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor="#1E3A8A" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                                <XAxis
+                                    dataKey="age"
+                                    tick={{ fill: '#64748B', fontSize: 12 }}
+                                    tickLine={false}
+                                    axisLine={{ stroke: '#CBD5E1' }}
+                                    tickFormatter={(val) => `${val}세`}
+                                />
+                                <YAxis
+                                    tickFormatter={formatCurrency}
+                                    tick={{ fill: '#64748B', fontSize: 12 }}
+                                    tickLine={false}
+                                    axisLine={false}
+                                    width={70}
+                                />
+                                <Tooltip
+                                    formatter={(value) => [formatFullCurrency(value), '보유 자산']}
+                                    labelFormatter={(label) => `${label}세 기준`}
+                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
+                                />
+
+                                <ReferenceLine
+                                    x={params.retirementAge}
+                                    stroke="#64748B"
+                                    strokeDasharray="5 5"
+                                    label={{ position: 'top', value: '은퇴 시작', fill: '#64748B', fontSize: 12, fontWeight: 600 }}
+                                />
+
+                                {goldenTime && (
+                                    <ReferenceLine
+                                        x={goldenTime}
+                                        stroke="#E11D48"
+                                        strokeDasharray="5 5"
+                                        label={{ position: 'top', value: '자산 고갈', fill: '#E11D48', fontSize: 12, fontWeight: 'bold' }}
+                                    />
+                                )}
+
+                                <Area
+                                    type="monotone"
+                                    dataKey="assets"
+                                    stroke="#1E3A8A"
+                                    strokeWidth={3}
+                                    fillOpacity={1}
+                                    fill="url(#colorAssets)"
+                                />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
                 </div>
             </div>
         </div>

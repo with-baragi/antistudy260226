@@ -18,13 +18,23 @@ export const calculateRetirementPlan = (params) => {
     const yearsToRetirement = Math.max(0, retirementAge - age);
     const futureMonthlyLivingExpense = monthlyLivingExpense * Math.pow(1 + inflationRateDecimal, yearsToRetirement);
 
+    // 2. Calculate the "Ideal Target Assets" needed exactly at retirement
+    // Approximate: sum of all future expenses during retirement, discounted to the retirement start, or just sum of inflated expenses
+    // Simple approach: Monthly * 12 * Years in retirement (with inflation)
+    let totalTargetAssets = 0;
+    for (let currentYear = retirementAge; currentYear <= lifeExpectancy; currentYear++) {
+        const yearsInRetirement = currentYear - retirementAge;
+        const inflatedMonthlyExpense = futureMonthlyLivingExpense * Math.pow(1 + inflationRateDecimal, yearsInRetirement);
+        totalTargetAssets += inflatedMonthlyExpense * 12;
+    }
+
     let yearlyData = [];
     let currentBalance = currentAssets;
     let goldenTime = null;
-    let totalRequiredAssets = 0; // The target asset at retirement
+    let totalRequiredAssets = 0; // Actual accumulated assets at retirement
 
     for (let currentYear = age; currentYear <= lifeExpectancy; currentYear++) {
-        const isRetired = currentYear >= retirementAge;
+        let isRetired = currentYear >= retirementAge;
 
         // Calculate income and expenses for the year
         let yearlySavings = 0;
@@ -72,7 +82,9 @@ export const calculateRetirementPlan = (params) => {
     return {
         yearlyData,
         goldenTime,
-        totalRequiredAssets: Math.round(totalRequiredAssets),
+        totalRequiredAssets: Math.round(totalRequiredAssets), // Actually Accumulated at Retirement
+        totalTargetAssets: Math.round(totalTargetAssets),     // Theoretically Needed completely
+        assetGap: Math.round(totalRequiredAssets - totalTargetAssets),
         futureMonthlyLivingExpense: Math.round(futureMonthlyLivingExpense),
         status
     };
