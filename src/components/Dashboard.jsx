@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import {
     ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
     BarChart, Bar, Cell
 } from 'recharts';
-import { AlertCircle, CheckCircle, AlertTriangle, Target, TrendingDown, TrendingUp, Wallet, Download } from 'lucide-react';
-import html2pdf from 'html2pdf.js';
+import { AlertCircle, CheckCircle, AlertTriangle, Target, TrendingDown, TrendingUp, Wallet, Download, Loader2 } from 'lucide-react';
+import { toPng } from 'html-to-image';
+import { jsPDF } from 'jspdf';
 
 const formatCurrency = (value) => {
     if (value >= 100000000) {
@@ -20,6 +22,8 @@ const formatFullCurrency = (value) => {
 };
 
 const Dashboard = ({ result, params }) => {
+    const [isExporting, setIsExporting] = useState(false);
+
     if (!result) return null;
 
     const {
@@ -47,16 +51,36 @@ const Dashboard = ({ result, params }) => {
         { name: '준비 예정 자산', value: totalRequiredAssets, fill: '#1E3A8A' }
     ];
 
-    const handleDownloadPdf = () => {
-        const element = document.getElementById('dashboard-content');
-        const opt = {
-            margin: 5,
-            filename: 'retirement_report.pdf',
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
-        };
-        html2pdf().set(opt).from(element).save();
+    const handleDownloadPdf = async () => {
+        if (isExporting) return;
+        setIsExporting(true);
+        try {
+            await new Promise(resolve => setTimeout(resolve, 150));
+            const element = document.getElementById('dashboard-content');
+
+            const dataUrl = await toPng(element, {
+                quality: 0.95,
+                backgroundColor: '#f8fafc',
+                pixelRatio: 2
+            });
+
+            const pdf = new jsPDF({
+                orientation: 'landscape',
+                unit: 'mm',
+                format: 'a4'
+            });
+
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (element.offsetHeight * pdfWidth) / element.offsetWidth;
+
+            pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            pdf.save('retirement_report.pdf');
+        } catch (error) {
+            console.error('PDF export failed:', error);
+            alert('PDF 리포트 생성 중 오류가 발생했습니다.');
+        } finally {
+            setIsExporting(false);
+        }
     };
 
     return (
@@ -79,10 +103,14 @@ const Dashboard = ({ result, params }) => {
                 <div className="flex flex-col items-end gap-3 z-10">
                     <button
                         onClick={handleDownloadPdf}
-                        className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold transition-colors border border-slate-200"
+                        disabled={isExporting}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors border ${isExporting
+                                ? 'bg-slate-200 text-slate-500 border-slate-300 cursor-not-allowed'
+                                : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+                            }`}
                     >
-                        <Download className="w-4 h-4" />
-                        리포트 PDF 저장
+                        {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                        {isExporting ? '저장 중...' : '리포트 PDF 저장'}
                     </button>
                     <div className={`flex items-center gap-3 px-6 py-3 rounded-full border shadow-sm ${statusColors[status]}`}>
                         <StatusIcon />
