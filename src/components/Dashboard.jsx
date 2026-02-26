@@ -2,7 +2,7 @@ import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
     BarChart, Bar, Cell, Legend
 } from 'recharts';
-import { AlertCircle, CheckCircle, AlertTriangle, Target, TrendingDown, TrendingUp } from 'lucide-react';
+import { AlertCircle, CheckCircle, AlertTriangle, Target, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
 
 const formatCurrency = (value) => {
     if (value >= 100000000) {
