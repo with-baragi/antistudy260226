@@ -13,6 +13,8 @@ function App() {
         expectedReturn: 5.0,
         inflationRate: 2.5,
         monthlyLivingExpense: 3000000, // 300만
+        nationalPension: 0,
+        retirementPension: 0
     });
 
     const [result, setResult] = useState(null);

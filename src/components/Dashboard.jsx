@@ -1,8 +1,9 @@
 import {
-    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
-    BarChart, Bar, Cell, Legend
+    ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine,
+    BarChart, Bar, Cell
 } from 'recharts';
-import { AlertCircle, CheckCircle, AlertTriangle, Target, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
+import { AlertCircle, CheckCircle, AlertTriangle, Target, TrendingDown, TrendingUp, Wallet, Download } from 'lucide-react';
+import html2pdf from 'html2pdf.js';
 
 const formatCurrency = (value) => {
     if (value >= 100000000) {
@@ -21,7 +22,10 @@ const formatFullCurrency = (value) => {
 const Dashboard = ({ result, params }) => {
     if (!result) return null;
 
-    const { yearlyData, goldenTime, totalRequiredAssets, totalTargetAssets, assetGap, futureMonthlyLivingExpense, status } = result;
+    const {
+        yearlyData, goldenTime, bullGoldenTime, bearGoldenTime,
+        totalRequiredAssets, totalTargetAssets, assetGap, status
+    } = result;
 
     const StatusIcon = () => {
         if (status === '안전') return <CheckCircle className="w-8 h-8 text-green-500" />;
@@ -43,8 +47,20 @@ const Dashboard = ({ result, params }) => {
         { name: '준비 예정 자산', value: totalRequiredAssets, fill: '#1E3A8A' }
     ];
 
+    const handleDownloadPdf = () => {
+        const element = document.getElementById('dashboard-content');
+        const opt = {
+            margin: 5,
+            filename: 'retirement_report.pdf',
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+        };
+        html2pdf().set(opt).from(element).save();
+    };
+
     return (
-        <div className="space-y-8 max-w-6xl mx-auto">
+        <div id="dashboard-content" className="space-y-8 max-w-6xl mx-auto p-4 bg-slate-50">
             {/* Header with Image & Status */}
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative">
                 <div className="flex items-center gap-6 z-10">
@@ -56,15 +72,24 @@ const Dashboard = ({ result, params }) => {
                     />
                     <div>
                         <h1 className="text-2xl sm:text-3xl font-bold text-deep-blue mb-2 tracking-tight">시뮬레이션 결과 리포트</h1>
-                        <p className="text-sm sm:text-base text-slate-500 max-w-md">고객님의 현재 자산과 월 투자 금액을 바탕으로 은퇴 시점의 목표 달성 여부를 분석했습니다.</p>
+                        <p className="text-sm sm:text-base text-slate-500 max-w-md">고객님의 현재 자산과 월 투자 금액을 바탕으로 은퇴 시점의 목표 달성 여부를 다각도로 분석했습니다.</p>
                     </div>
                 </div>
 
-                <div className={`flex items-center gap-3 px-6 py-4 rounded-full border shadow-sm z-10 ${statusColors[status]}`}>
-                    <StatusIcon />
-                    <div>
-                        <div className="text-sm opacity-80 font-medium">현재 플랜 진단</div>
-                        <div className="font-bold text-xl">{status} 상태</div>
+                <div className="flex flex-col items-end gap-3 z-10">
+                    <button
+                        onClick={handleDownloadPdf}
+                        className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold transition-colors border border-slate-200"
+                    >
+                        <Download className="w-4 h-4" />
+                        리포트 PDF 저장
+                    </button>
+                    <div className={`flex items-center gap-3 px-6 py-3 rounded-full border shadow-sm ${statusColors[status]}`}>
+                        <StatusIcon />
+                        <div>
+                            <div className="text-sm opacity-80 font-medium">현재 플랜 진단</div>
+                            <div className="font-bold text-xl">{status} 상태</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -77,7 +102,7 @@ const Dashboard = ({ result, params }) => {
                         <p className="text-sm text-slate-500 font-medium">은퇴 시점 필요 목표 자산</p>
                     </div>
                     <p className="text-3xl font-bold text-slate-700">{formatFullCurrency(totalTargetAssets)}</p>
-                    <p className="text-xs text-slate-400 mt-2">은퇴 후 필요 생활비 총액 추산</p>
+                    <p className="text-xs text-slate-400 mt-2">연금 수입을 제외한 순수 필요액</p>
                 </div>
 
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-center border-l-4 border-l-deep-blue">
@@ -115,7 +140,7 @@ const Dashboard = ({ result, params }) => {
                             <BarChart data={comparisonData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }} barSize={60}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                                 <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 13, fontWeight: 500 }} axisLine={false} tickLine={false} />
-                                <YAxis tickFormatter={formatCurrency} tick={{ fill: '#94A3B8', fontSize: 11 }} axisLine={false} tickLine={false} />
+                                <YAxis tickFormatter={formatCurrency} tick={{ fill: '#94A3B8', fontSize: 11 }} axisLine={false} tickLine={false} width={60} />
                                 <Tooltip
                                     formatter={(value) => [formatFullCurrency(value), '금액']}
                                     cursor={{ fill: 'transparent' }}
@@ -131,19 +156,27 @@ const Dashboard = ({ result, params }) => {
                     </div>
                 </div>
 
-                {/* Main Area Chart */}
+                {/* Main Multi-Scenario Chart */}
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 lg:col-span-2">
-                    <div className="flex justify-between items-end mb-6">
-                        <div>
-                            <h3 className="text-lg font-bold text-deep-blue mb-1">연도별 생애 자산 흐름 추이</h3>
-                            <p className="text-xs text-slate-500">
-                                {goldenTime ? `자산 고갈 예상 시점: ${goldenTime}세` : '기대 수명까지 자산이 고갈되지 않습니다.'}
-                            </p>
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-6 gap-4">
+                        <div className="flex-1">
+                            <h3 className="text-lg font-bold text-deep-blue mb-2">연도별 생애 자산 흐름 시나리오</h3>
+                            <div className="flex flex-wrap gap-2">
+                                <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
+                                    기본: {goldenTime ? `${goldenTime}세 고갈` : '고갈 없음'}
+                                </span>
+                                <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                    강세장(+2%p): {bullGoldenTime ? `${bullGoldenTime}세 고갈` : '고갈 없음'}
+                                </span>
+                                <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-rose-50 text-rose-700 border border-rose-100">
+                                    약세장(-2%p): {bearGoldenTime ? `${bearGoldenTime}세 고갈` : '고갈 없음'}
+                                </span>
+                            </div>
                         </div>
                     </div>
                     <div className="h-64 sm:h-80 w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={yearlyData} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
+                            <ComposedChart data={yearlyData} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
                                 <defs>
                                     <linearGradient id="colorAssets" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor="#1E3A8A" stopOpacity={0.3} />
@@ -166,7 +199,12 @@ const Dashboard = ({ result, params }) => {
                                     width={70}
                                 />
                                 <Tooltip
-                                    formatter={(value) => [formatFullCurrency(value), '보유 자산']}
+                                    formatter={(value, name) => {
+                                        let label = '기본 예상 자산';
+                                        if (name === 'bullAssets') label = '강세장 (수익률 +2%p)';
+                                        if (name === 'bearAssets') label = '약세장 (수익률 -2%p)';
+                                        return [formatFullCurrency(value), label];
+                                    }}
                                     labelFormatter={(label) => `${label}세 기준`}
                                     contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
                                 />
@@ -178,15 +216,6 @@ const Dashboard = ({ result, params }) => {
                                     label={{ position: 'top', value: '은퇴 시작', fill: '#64748B', fontSize: 12, fontWeight: 600 }}
                                 />
 
-                                {goldenTime && (
-                                    <ReferenceLine
-                                        x={goldenTime}
-                                        stroke="#E11D48"
-                                        strokeDasharray="5 5"
-                                        label={{ position: 'top', value: '자산 고갈', fill: '#E11D48', fontSize: 12, fontWeight: 'bold' }}
-                                    />
-                                )}
-
                                 <Area
                                     type="monotone"
                                     dataKey="assets"
@@ -194,8 +223,11 @@ const Dashboard = ({ result, params }) => {
                                     strokeWidth={3}
                                     fillOpacity={1}
                                     fill="url(#colorAssets)"
+                                    name="assets"
                                 />
-                            </AreaChart>
+                                <Line type="monotone" dataKey="bullAssets" stroke="#10B981" strokeDasharray="5 5" strokeWidth={2} dot={false} name="bullAssets" />
+                                <Line type="monotone" dataKey="bearAssets" stroke="#F43F5E" strokeDasharray="5 5" strokeWidth={2} dot={false} name="bearAssets" />
+                            </ComposedChart>
                         </ResponsiveContainer>
                     </div>
                 </div>

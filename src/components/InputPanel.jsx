@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Settings, Calculator, Wallet, TrendingUp } from 'lucide-react';
+import { Settings, Calculator, Wallet, TrendingUp, PiggyBank } from 'lucide-react';
 
 const InputPanel = ({ params, setParams }) => {
 
@@ -85,6 +85,16 @@ const InputPanel = ({ params, setParams }) => {
                     </div>
                     <InputGroup label="현재 준비된 은퇴 자산" name="currentAssets" value={params.currentAssets} unit="원" min={0} />
                     <InputGroup label="월 투자 가능 금액" name="monthlySavings" value={params.monthlySavings} unit="원" min={0} />
+                </section>
+
+                {/* Pension Info */}
+                <section>
+                    <div className="flex items-center gap-2 mb-4 text-deep-blue pb-2 border-b border-slate-200">
+                        <PiggyBank className="w-4 h-4" />
+                        <h3 className="font-semibold text-sm uppercase tracking-wider">연금 정보</h3>
+                    </div>
+                    <InputGroup label="예상 국민연금 수령액 (월)" name="nationalPension" value={params.nationalPension} unit="원" min={0} />
+                    <InputGroup label="예상 퇴직/개인연금 수령액 (월)" name="retirementPension" value={params.retirementPension} unit="원" min={0} />
                 </section>
 
                 {/* Economy Assumption */}
